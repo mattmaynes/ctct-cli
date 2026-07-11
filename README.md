@@ -29,7 +29,13 @@ Built on the official [`ctct-api-client`](https://www.npmjs.com/package/ctct-api
 
 ### Install
 
-**Global install from GitHub** (recommended):
+**From npm** (recommended):
+
+```bash
+npm install -g @mattmaynes/ctct-cli
+```
+
+**From GitHub** (latest `main`):
 
 ```bash
 npm install -g mattmaynes/ctct-cli

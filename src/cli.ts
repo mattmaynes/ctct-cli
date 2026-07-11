@@ -19,7 +19,11 @@ import { registerAbtestCommands } from './commands/abtest';
 import { registerReportCommands } from './commands/report';
 import { registerBulkCommands } from './commands/bulk';
 
-const VERSION = '1.1.0';
+// Single source of truth: read the version from package.json (dist/cli.js ->
+// ../package.json), so a release only bumps package.json. A runtime require
+// avoids pulling package.json into the compiled rootDir.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const VERSION: string = require('../package.json').version;
 
 function buildProgram(): Command {
   const program = new Command();
