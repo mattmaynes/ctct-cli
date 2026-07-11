@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/mattmaynes/ctct-cli/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/mattmaynes/ctct-cli/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://github.com/mattmaynes/ctct-cli/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/mattmaynes/ctct-cli?sort=semver"></a>
+  <a href="https://github.com/mattmaynes/ctct-cli/releases/latest"><img alt="Latest release" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fmattmaynes%2Fctct-cli%2Fmain%2Fpackage.json&query=%24.version&label=release&color=blue"></a>
   <a href="https://developer.constantcontact.com/api_reference/index.html"><img alt="Constant Contact v3 API" src="https://img.shields.io/badge/Constant%20Contact-v3%20API-1852cc?logo=constantcontact&logoColor=white"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
   <img alt="Node 18+" src="https://img.shields.io/badge/node-18%2B-339933?logo=nodedotjs&logoColor=white">

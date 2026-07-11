@@ -1,0 +1,68 @@
+name: Daily API check
+
+# Runs once a day to catch two kinds of breakage:
+#   1. The build/unit tests stop passing (dependency or toolchain drift).
+#   2. Constant Contact ships a new `ctct-api-client` SDK — the SDK is
+#      auto-generated from CC's OpenAPI spec, so a new release is a strong
+#      signal that the underlying API changed.
+# On any failure, GitHub emails the repo owner (built-in for scheduled runs)
+# and this workflow opens (or comments on) a tracking issue.
+
+on:
+  schedule:
+    - cron: '0 13 * * *' # 13:00 UTC daily (~9am ET). GitHub may delay scheduled runs.
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    name: Tests + API drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Check for Constant Contact SDK / API drift
+        run: |
+          # npm ci installs the exact locked version, so this compares the
+          # pinned SDK against the latest published one.
+          PINNED=$(node -p "require('./node_modules/ctct-api-client/package.json').version")
+          LATEST=$(npm view ctct-api-client version)
+          echo "pinned=$PINNED  latest=$LATEST"
+          if [ "$PINNED" != "$LATEST" ]; then
+            echo "::warning title=CC SDK drift::ctct-api-client $LATEST is published (pinned $PINNED); the Constant Contact API likely changed."
+            echo "DRIFT=A new Constant Contact SDK is available: \`ctct-api-client@$LATEST\` (pinned \`$PINNED\`). CC regenerates this SDK when its API changes." >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+      - name: Open or update tracking issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create api-drift --color B60205 --description "Daily API check failures" --force || true
+          TITLE="⚠️ Daily API check failed"
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          BODY=$(printf 'The scheduled **Daily API check** failed.\n\n- Run: %s\n- %s\n\nLikely causes: the unit tests/build broke, or a new `ctct-api-client` was published (Constant Contact regenerates the SDK when its API changes). Review the run; if the SDK bumped, update the pin, re-test, and cut a release.' "$RUN_URL" "${DRIFT:-See the run logs for details.}")
+          NUM=$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$NUM" ]; then
+            gh issue comment "$NUM" --body "$BODY"
+          else
+            gh issue create --title "$TITLE" --body "$BODY" --label api-drift
+          fi
