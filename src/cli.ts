@@ -19,7 +19,7 @@ import { registerAbtestCommands } from './commands/abtest';
 import { registerReportCommands } from './commands/report';
 import { registerBulkCommands } from './commands/bulk';
 
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 
 function buildProgram(): Command {
   const program = new Command();
@@ -28,15 +28,7 @@ function buildProgram(): Command {
     .description('Command-line interface for the Constant Contact v3 API (for humans and AI agents).')
     .version(VERSION, '-v, --version')
     .option('--json', 'output JSON (also automatic when piped)')
-    .option('--config <dir>', 'use a specific config directory')
-    .enablePositionalOptions();
-
-  // Apply global options before any subcommand runs.
-  program.hook('preAction', () => {
-    const opts = program.opts();
-    configureOutput({ json: !!opts.json });
-    setSessionOptions({ configDir: opts.config });
-  });
+    .option('--config <dir>', 'use a specific config directory');
 
   registerAuthCommands(program);
   registerAccountCommands(program);
@@ -54,12 +46,36 @@ function buildProgram(): Command {
   return program;
 }
 
+/**
+ * Pull the global `--json` / `--config <dir>` flags out of argv from ANY
+ * position (before or after the subcommand) and return the remaining args.
+ * This lets agents write `ctct account show --json` naturally instead of being
+ * forced to put global flags before the subcommand.
+ */
+function extractGlobalFlags(args: string[]): { rest: string[]; json: boolean; configDir?: string } {
+  const rest: string[] = [];
+  let json = false;
+  let configDir: string | undefined;
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === '--json') json = true;
+    else if (a === '--config') configDir = args[++i];
+    else if (a.startsWith('--config=')) configDir = a.slice('--config='.length);
+    else rest.push(a);
+  }
+  return { rest, json, configDir };
+}
+
 async function main(): Promise<void> {
+  const [node, script, ...argv] = process.argv;
+  const { rest, json, configDir } = extractGlobalFlags(argv);
+  configureOutput({ json });
+  setSessionOptions({ configDir });
+
   const program = buildProgram();
   try {
-    await program.parseAsync(process.argv);
+    await program.parseAsync([node, script, ...rest]);
   } catch (err) {
-    // configureOutput may not have run if parsing failed early; default is fine.
     process.exitCode = renderError(normalizeError(err));
   }
 }
