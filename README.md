@@ -103,11 +103,22 @@ Run `ctct <group> --help` for subcommands and flags.
 
 ### Email: create → test → send
 
-Email campaigns contain *activities*; `schedule`, `send`, `test-send`, `preview`, and `unschedule` take a
-**campaign id** and resolve the `primary_email` activity for you.
+Create a campaign straight from an HTML file. Save your sender once with `ctct init` and a single
+`--subject` covers both the subject line and the (unique) campaign name:
 
 ```bash
-ctct email create --data @campaign.json                 # returns campaign_id
+ctct init --from-name "Your Name" --from-email you@example.com   # one time; must be a verified sender
+ctct email create --subject "New post: My Title" --html-file email.html   # returns campaign_id
+```
+
+`--from-email`/`--from-name`/`--reply-to` fall back to the configured defaults, `--name` falls back to
+`--subject`, and `--reply-to` falls back to `--from-email` — so the common case needs only a subject and a
+file. Use `--data @campaign.json` for full control over the request body.
+
+Email campaigns contain *activities*; `schedule`, `send`, `test-send`, `preview`, and `unschedule` take a
+**campaign id** and resolve the `primary_email` activity for you:
+
+```bash
 ctct email test-send <campaignId> --to you@example.com  # goes only to that address
 ctct email schedule <campaignId> --at 2026-08-01T15:00:00Z
 ctct email send <campaignId>                            # send immediately

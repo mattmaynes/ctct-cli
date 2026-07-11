@@ -32,33 +32,40 @@ export function registerEmailCommands(program: Command): void {
 
   const create = email
     .command('create')
-    .description('Create an email campaign (use --data for full activity content)')
-    .option('--name <name>', 'campaign name (unique)')
-    .option('--subject <subject>')
-    .option('--from-name <name>')
-    .option('--from-email <email>', 'must be a verified account email')
-    .option('--reply-to <email>')
-    .option('--preheader <text>')
-    .option('--html <html>', 'HTML content')
-    .option('--html-file <path>', 'read HTML content from a file')
+    .description('Create an email campaign from an HTML file (or --data for full control)')
+    .option('--subject <subject>', 'email subject (also used as the campaign name if --name is omitted)')
+    .option('--name <name>', 'campaign name — must be unique; defaults to --subject')
+    .option('--html-file <path>', 'read the HTML body from a file')
+    .option('--html <html>', 'HTML body as a string (alternative to --html-file)')
+    .option('--from-name <name>', 'sender name (defaults to configured from_name)')
+    .option('--from-email <email>', 'verified sender email (defaults to configured from_email)')
+    .option('--reply-to <email>', 'reply-to email (defaults to from-email)')
+    .option('--preheader <text>', 'inbox preview text')
     .option('--format-type <n>', 'format_type (default 5 = custom code)', toInt);
   withDataOption(create, 'campaign').action(async (opts) => {
+    const cfg = ctx().config;
     const data = loadDataOption(opts.data);
     let body: Record<string, unknown>;
     if (data.email_campaign_activities) {
-      body = mergeBody(defined({ name: opts.name }), data);
+      body = mergeBody(defined({ name: opts.name ?? opts.subject }), data);
     } else {
       const html = opts.htmlFile ? fs.readFileSync(opts.htmlFile, 'utf8') : opts.html;
+      // Sender fields fall back to the values saved by `ctct init`.
+      const fromEmail = opts.fromEmail ?? cfg.from_email;
       const activity = defined({
         format_type: opts.formatType ?? 5,
-        from_name: opts.fromName,
-        from_email: opts.fromEmail,
-        reply_to_email: opts.replyTo,
+        from_name: opts.fromName ?? cfg.from_name,
+        from_email: fromEmail,
+        reply_to_email: opts.replyTo ?? cfg.reply_to ?? fromEmail,
         subject: opts.subject,
         preheader: opts.preheader,
         html_content: html,
       });
-      body = mergeBody(defined({ name: opts.name, email_campaign_activities: [activity] }), data);
+      // Campaign name defaults to the subject so a single flag covers both.
+      body = mergeBody(
+        defined({ name: opts.name ?? opts.subject, email_campaign_activities: [activity] }),
+        data,
+      );
     }
     const res = await call(ctx().api(EmailCampaignsApi).createEmailCampaign(body as any));
     printObject(res, ['campaign_id', 'name', 'current_status', 'type']);

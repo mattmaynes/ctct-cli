@@ -23,6 +23,10 @@ export interface Config {
   default_scopes?: string;
   /** Where the refresh/access tokens are kept. Defaults to keychain when available. */
   storage?: StorageBackend;
+  /** Default sender identity for `ctct email create`, so you don't repeat it. */
+  from_name?: string;
+  from_email?: string;
+  reply_to?: string;
 }
 
 export interface TokenSet {

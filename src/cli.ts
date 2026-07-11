@@ -19,7 +19,7 @@ import { registerAbtestCommands } from './commands/abtest';
 import { registerReportCommands } from './commands/report';
 import { registerBulkCommands } from './commands/bulk';
 
-const VERSION = '1.0.1';
+const VERSION = '1.1.0';
 
 function buildProgram(): Command {
   const program = new Command();

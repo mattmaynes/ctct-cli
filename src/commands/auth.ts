@@ -23,6 +23,9 @@ export function registerAuthCommands(program: Command): void {
     .option('--local', 'write config to ./.ctct instead of ~/.ctct', false)
     .option('--storage <backend>', 'token storage backend: keychain | file')
     .option('--scopes <list>', 'default scopes for `ctct login` (comma-separated, or "all")')
+    .option('--from-name <name>', 'default sender name for `email create`')
+    .option('--from-email <email>', 'default sender email (must be a verified sender)')
+    .option('--reply-to <email>', 'default reply-to email (defaults to from-email)')
     .action(async (opts) => {
       const dir = targetConfigDir(!!opts.local, sessionConfigDir());
       const existing = readConfig(dir);
@@ -48,12 +51,21 @@ export function registerAuthCommands(program: Command): void {
 
       const default_scopes = opts.scopes ? resolveScopes(opts.scopes) : existing.default_scopes;
 
-      writeConfig(dir, { ...existing, client_id: clientId, storage, default_scopes });
+      writeConfig(dir, {
+        ...existing,
+        client_id: clientId,
+        storage,
+        default_scopes,
+        from_name: opts.fromName ?? existing.from_name,
+        from_email: opts.fromEmail ?? existing.from_email,
+        reply_to: opts.replyTo ?? existing.reply_to,
+      });
       ok(`Saved configuration to ${dir}`, {
         ok: true,
         config_dir: dir,
         client_id: clientId,
         storage: storage ?? 'auto',
+        from_email: opts.fromEmail ?? existing.from_email ?? null,
       });
     });
 
