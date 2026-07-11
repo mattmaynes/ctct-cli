@@ -4,6 +4,11 @@ name: Publish to npm
 # is the trigger, so the pipeline is: bump version -> tag -> create release ->
 # this workflow builds, tests, and publishes with provenance.
 # Manual `workflow_dispatch` publishes whatever version is on the default branch.
+#
+# Auth is npm Trusted Publishing (OIDC) — no NPM_TOKEN. It requires:
+#   - `id-token: write` (below), and
+#   - a trusted publisher configured on npmjs.com for this repo + `publish.yml`,
+#   - npm >= 11.5.1 (installed below; setup-node still ships npm 10.x).
 
 on:
   release:
@@ -47,7 +52,8 @@ jobs:
             exit 1
           fi
 
-      - name: Publish to npm
+      - name: Upgrade npm for OIDC trusted publishing
+        run: npm install -g npm@latest
+
+      - name: Publish to npm (OIDC trusted publishing)
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
