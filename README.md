@@ -14,6 +14,9 @@
 
 ---
 
+> [!IMPORTANT]
+> **Unofficial project.** `ctct` is a community-built, third-party CLI. It is **not affiliated with, endorsed by, or supported by Constant Contact**. "Constant Contact" and related names are trademarks of their respective owner. Use at your own risk.
+
 `ctct` wraps the [Constant Contact v3 API](https://developer.constantcontact.com/api_reference/index.html) —
 contacts, lists, tags, segments, custom fields, email campaigns, scheduling, reporting, and bulk
 activities. It handles its own OAuth (device flow), stores a long-lived token in your OS keychain, refreshes
