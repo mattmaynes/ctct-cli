@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import * as assert from 'node:assert/strict';
-import { resolveScopes, ALL_SCOPES } from '../src/lib/oauth';
+import { resolveRefreshToken, resolveScopes, ALL_SCOPES } from '../src/lib/oauth';
 
 test('resolveScopes: default requests all scopes including offline_access', () => {
   const scope = resolveScopes().split(' ');
@@ -24,4 +24,28 @@ test('resolveScopes: does not duplicate offline_access', () => {
 
 test('resolveScopes: rejects unknown scopes', () => {
   assert.throws(() => resolveScopes('contact_data,bogus'), /Unknown scope/);
+});
+
+test('resolveRefreshToken: flag beats env and session, and is stateless', () => {
+  const r = resolveRefreshToken({ flag: 'flagtok', env: 'envtok', session: 'sesstok' });
+  assert.equal(r.refreshToken, 'flagtok');
+  assert.equal(r.fromSession, false);
+});
+
+test('resolveRefreshToken: env beats session, and is stateless', () => {
+  const r = resolveRefreshToken({ env: 'envtok', session: 'sesstok' });
+  assert.equal(r.refreshToken, 'envtok');
+  assert.equal(r.fromSession, false);
+});
+
+test('resolveRefreshToken: session used only when no flag/env, and flags fromSession', () => {
+  const r = resolveRefreshToken({ session: 'sesstok' });
+  assert.equal(r.refreshToken, 'sesstok');
+  assert.equal(r.fromSession, true);
+});
+
+test('resolveRefreshToken: nothing provided yields no token', () => {
+  const r = resolveRefreshToken({});
+  assert.equal(r.refreshToken, undefined);
+  assert.equal(r.fromSession, false);
 });

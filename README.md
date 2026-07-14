@@ -98,7 +98,7 @@ See available scopes any time with `ctct scopes` (default requests all of them).
 
 | Group | What it does |
 | --- | --- |
-| `init` / `login` / `logout` / `status` / `scopes` | Auth & configuration |
+| `init` / `login` / `logout` / `status` / `scopes` / `refresh-token` | Auth & configuration |
 | `account` | Account details, sender emails, privileges |
 | `contact` | Add / list / get / update / delete / upsert contacts |
 | `list` | Manage contact lists |
@@ -152,6 +152,31 @@ Convenience flags are merged **under** `--data` (explicit `--data` fields win).
 - Stable **exit codes**: `0` ok · `1` generic · `2` usage · `3` not authenticated / refresh failed · `4` API error.
   In JSON mode errors print as `{ "error": ..., "exit_code": N }`.
 - Set `CTCT_DEBUG=1` to include raw API error bodies on failures.
+
+### Keeping a refresh token alive (`refresh-token`)
+
+`ctct refresh-token` exchanges a refresh token for a fresh 24h access token and prints the result as
+JSON. It reads the token from `--refresh-token`, else `CTCT_REFRESH_TOKEN`, else the stored login
+session (and `--client-id`, else `CTCT_CLIENT_ID`, else config). When the token comes from a flag or
+env var it is treated as **stateless** and never written to the session store - so it is safe to run
+against an app's own `.env` credentials.
+
+This exists because a Constant Contact **long-lived refresh token still expires after ~180 days of
+inactivity**, and the clock resets only when the token is used. A scheduled `refresh-token` keeps it
+warm and exits non-zero (code `3`) the moment it breaks, so a cron can alert well before a real
+request fails:
+
+```bash
+# cron: exercise the token daily; alert on failure via your own channel
+set -a; . /path/to/.env.site; set +a          # CTCT_CLIENT_ID, CTCT_REFRESH_TOKEN
+ctct refresh-token >/dev/null || notify "CTCT token refresh failed"
+```
+
+On a host without Node, run it from the container image (no install, pinned):
+
+```bash
+docker run --rm --env-file /path/to/.env.site ghcr.io/mattmaynes/ctct-cli refresh-token >/dev/null
+```
 
 ## Configuration & token storage
 

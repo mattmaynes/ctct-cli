@@ -3,12 +3,14 @@
 import { Command } from 'commander';
 import {
   readConfig,
+  resolveClientId,
+  resolveConfigDir,
   StorageBackend,
   targetConfigDir,
   writeConfig,
 } from '../lib/config';
-import { resolveScopes, SCOPES } from '../lib/oauth';
-import { startDeviceAuthorization, pollForToken } from '../lib/deviceFlow';
+import { resolveRefreshToken, resolveScopes, SCOPES } from '../lib/oauth';
+import { refreshAccessToken, startDeviceAuthorization, pollForToken } from '../lib/deviceFlow';
 import { AuthError, CliError, EXIT } from '../lib/errors';
 import { bold, dim, info, ok, printList, printObject } from '../lib/output';
 import { openBrowser } from '../lib/browser';
@@ -131,6 +133,58 @@ export function registerAuthCommands(program: Command): void {
         scopes: t?.scope ?? null,
       };
       printObject(status);
+    });
+
+  program
+    .command('refresh-token')
+    .description('Exchange a refresh token for a fresh access token (for scripting and cron keepalive)')
+    .option('--client-id <id>', 'client_id (else CTCT_CLIENT_ID env, else config)')
+    .option(
+      '--refresh-token <token>',
+      'refresh token to exchange (else CTCT_REFRESH_TOKEN env, else the stored login session)',
+    )
+    .action(async (opts) => {
+      // Resolve client_id without touching the token store: flag > env > config.
+      const config = readConfig(resolveConfigDir(sessionConfigDir()));
+      const clientId = opts.clientId || resolveClientId(config);
+
+      // Only fall back to the stored session (which loads the token store) when
+      // no explicit token was given - so the scripting path stays stateless.
+      const explicitRefresh = opts.refreshToken || process.env.CTCT_REFRESH_TOKEN;
+      const session = explicitRefresh ? undefined : ctx();
+      const { refreshToken, fromSession } = resolveRefreshToken({
+        flag: opts.refreshToken,
+        env: process.env.CTCT_REFRESH_TOKEN,
+        session: session?.tokens.tokens?.refresh_token,
+      });
+
+      if (!clientId) {
+        throw new CliError(
+          'No client_id. Pass --client-id, set CTCT_CLIENT_ID, or run `ctct init --client-id <id>`.',
+          EXIT.USAGE,
+        );
+      }
+      if (!refreshToken) {
+        throw new AuthError(
+          'No refresh token. Pass --refresh-token, set CTCT_REFRESH_TOKEN, or run `ctct login`.',
+        );
+      }
+
+      const refreshed = await refreshAccessToken(clientId, refreshToken);
+      // Keep the login session current only when the token came from it; an
+      // explicit flag/env token is stateless and never written back.
+      if (fromSession && session) session.tokens.save(refreshed);
+
+      const rotated = !!refreshed.refresh_token && refreshed.refresh_token !== refreshToken;
+      printObject({
+        access_token: refreshed.access_token,
+        token_type: refreshed.token_type ?? 'Bearer',
+        expires_at: new Date(refreshed.expires_at).toISOString(),
+        scope: refreshed.scope ?? null,
+        refresh_token: refreshed.refresh_token ?? null,
+        rotated,
+        saved_to_session: fromSession,
+      });
     });
 
   program

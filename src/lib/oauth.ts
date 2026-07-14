@@ -32,6 +32,27 @@ export const SELECTABLE_SCOPES = SCOPES.filter((s) => s.name !== 'offline_access
 export const ALL_SCOPES = SCOPES.map((s) => s.name);
 
 /**
+ * Resolve which refresh token `ctct refresh-token` should exchange, from the
+ * precedence: explicit `--refresh-token` flag > `CTCT_REFRESH_TOKEN` env var >
+ * the stored login session. `fromSession` is true only when the token came from
+ * the session (neither flag nor env was given), which tells the caller to
+ * persist the rotated tokens back to the session store; an explicit flag/env
+ * token is treated as stateless (e.g. a cron keepalive over a `.env` file) and
+ * is never written to the session.
+ */
+export function resolveRefreshToken(sources: {
+  flag?: string;
+  env?: string;
+  session?: string;
+}): { refreshToken?: string; fromSession: boolean } {
+  const explicit = sources.flag || sources.env;
+  return {
+    refreshToken: explicit || sources.session || undefined,
+    fromSession: !explicit && !!sources.session,
+  };
+}
+
+/**
  * Normalize a user-supplied scope selection into the space-delimited string the
  * authorization server expects. `offline_access` is always appended so we get a
  * refresh token. Passing nothing (or "all") requests every scope.

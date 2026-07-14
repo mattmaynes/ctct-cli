@@ -1,0 +1,9 @@
+node_modules
+dist
+dist-test
+.git
+.github
+*.md
+eslint.config.mjs
+tsconfig.test.json
+test
