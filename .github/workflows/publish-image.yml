@@ -1,0 +1,70 @@
+name: Publish image to GHCR
+
+# Builds the CLI Docker image and pushes it to the GitHub Container Registry when
+# a GitHub Release is published (the same trigger as the npm publish), tagged with
+# the release version and `latest`. A Docker-only host can then pull a pinned image
+# instead of building from source:
+#   docker run --rm --env-file .env.site ghcr.io/mattmaynes/ctct-cli refresh-token
+# `workflow_dispatch` rebuilds `latest` from the default branch on demand.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  publish-image:
+    name: Build & push image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify package version matches the release tag
+        if: github.event_name == 'release'
+        run: |
+          PKG=$(node -p "require('./package.json').version")
+          TAG="${{ github.event.release.tag_name }}"
+          echo "package.json=$PKG  release tag=$TAG"
+          if [ "$PKG" != "$TAG" ]; then
+            echo "::error title=Version mismatch::package.json ($PKG) does not match the release tag ($TAG). Bump package.json before releasing."
+            exit 1
+          fi
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image metadata (tags + labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          # On a release the ref is the version tag, so semver tags apply; the
+          # raw `latest` covers both a release and a manual default-branch run.
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.event_name == 'release' }}
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
