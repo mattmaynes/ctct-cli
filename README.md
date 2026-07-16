@@ -1,7 +1,7 @@
 <h1 align="center">ctct</h1>
 
 <p align="center">
-  <strong>The Constant Contact v3 API on your command line — built for humans and AI agents.</strong>
+  <strong>The Constant Contact v3 API on your command line</strong>
 </p>
 
 <p align="center">
