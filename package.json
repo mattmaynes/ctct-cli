@@ -1,6 +1,6 @@
 {
   "name": "@mattmaynes/ctct-cli",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Unofficial command-line interface for the Constant Contact v3 API, built for humans and AI agents.",
   "keywords": [
     "constant-contact",
@@ -45,7 +45,7 @@
   "dependencies": {
     "@napi-rs/keyring": "^1.1.7",
     "commander": "^12.1.0",
-    "ctct-api-client": "^1.5.0"
+    "ctct-api-client": "^1.23.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
