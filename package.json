@@ -1,6 +1,6 @@
 {
   "name": "@mattmaynes/ctct-cli",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Unofficial command-line interface for the Constant Contact v3 API, built for humans and AI agents.",
   "keywords": [
     "constant-contact",
